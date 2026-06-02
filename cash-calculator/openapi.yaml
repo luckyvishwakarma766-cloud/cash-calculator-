@@ -1,0 +1,284 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: Cash Calculator API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: calculations
+    description: Cash calculation operations
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /calculations:
+    get:
+      operationId: listCalculations
+      tags: [calculations]
+      summary: List calculation history
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Search by label or notes
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Max records to return
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: Offset for pagination
+      responses:
+        "200":
+          description: List of calculations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculationList"
+    post:
+      operationId: createCalculation
+      tags: [calculations]
+      summary: Save a calculation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CalculationInput"
+      responses:
+        "201":
+          description: Saved calculation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Calculation"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: clearCalculations
+      tags: [calculations]
+      summary: Clear all calculation history
+      responses:
+        "200":
+          description: All calculations cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /calculations/stats:
+    get:
+      operationId: getCalculationStats
+      tags: [calculations]
+      summary: Get dashboard statistics
+      responses:
+        "200":
+          description: Aggregated statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculationStats"
+
+  /calculations/{id}:
+    get:
+      operationId: getCalculation
+      tags: [calculations]
+      summary: Get a single calculation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Calculation record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Calculation"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteCalculation
+      tags: [calculations]
+      summary: Delete a calculation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Denomination:
+      type: object
+      description: A denomination with its quantity
+      properties:
+        value:
+          type: integer
+          description: Denomination value in rupees (0 for coins)
+        label:
+          type: string
+          description: Display label e.g. "₹500"
+        quantity:
+          type: integer
+          description: Number of notes/coins
+        subtotal:
+          type: integer
+          description: quantity * value
+      required:
+        - value
+        - label
+        - quantity
+        - subtotal
+
+    Calculation:
+      type: object
+      properties:
+        id:
+          type: integer
+        label:
+          type: ["string", "null"]
+        denominations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Denomination"
+        totalAmount:
+          type: integer
+          description: Total amount in rupees
+        totalNotes:
+          type: integer
+          description: Total count of notes and coins
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - denominations
+        - totalAmount
+        - totalNotes
+        - createdAt
+
+    CalculationInput:
+      type: object
+      properties:
+        label:
+          type: string
+        denominations:
+          type: array
+          items:
+            $ref: "#/components/schemas/Denomination"
+        totalAmount:
+          type: integer
+        totalNotes:
+          type: integer
+      required:
+        - denominations
+        - totalAmount
+        - totalNotes
+
+    CalculationList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Calculation"
+        total:
+          type: integer
+      required:
+        - items
+        - total
+
+    CalculationStats:
+      type: object
+      properties:
+        totalCalculations:
+          type: integer
+        totalAmountProcessed:
+          type: integer
+        averageAmount:
+          type: integer
+        largestCalculation:
+          type: integer
+        todayCount:
+          type: integer
+      required:
+        - totalCalculations
+        - totalAmountProcessed
+        - averageAmount
+        - largestCalculation
+        - todayCount
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+        - message
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
